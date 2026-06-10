@@ -32,11 +32,16 @@ void loop() {
   dht_sensor.temperature().getEvent(&tempEvent);
   dht_sensor.humidity().getEvent(&humidityEvent);
 
-  Serial.print("Temp: ");
-  Serial.print(tempEvent.temperature);
-  Serial.print(" C, Humidity: ");
-  Serial.print(humidityEvent.relative_humidity);
-  Serial.println(" %");
+  float currentTemp = tempEvent.temperature;
+  float fahrenheit = (currentTemp * 9.0 / 5.0) + 32.0;
 
-  delay(2000); // Temporary blocking delay for sensor reads
+  lcd.setCursor(0, 0);
+  lcd.print("Temperature:");
+  lcd.setCursor(0, 1);
+  lcd.print("                "); // Clear line
+  lcd.setCursor(0, 1);
+  lcd.print(fahrenheit);
+  lcd.print(" F");
+
+  delay(2000);
 }
