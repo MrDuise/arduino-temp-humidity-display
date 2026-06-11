@@ -25,4 +25,4 @@ I built this to learn how to write non-blocking code in embedded systems. The pr
 The hardest part was shifting my mindset away from linear, top-to-bottom programming. Managing separate timers running at different intervals in a single `loop()` function felt like juggling at first. If I were to do this differently, I would use an external hardware interrupt for the button to see how it compares to software polling, and I'd migrate the sensor logic to an explicit state machine.
 
 ## Wiring Diagram
-[Include a Fritzing diagram or a clear photo here]
+![alt text](image-1.png)
