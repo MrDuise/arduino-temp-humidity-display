@@ -13,6 +13,8 @@
 #define LCD_D6_PIN       11
 #define LCD_D7_PIN       12
 
+static unsigned long measurementTimestamp = 0;
+
 DHT_Unified dht_sensor(DHT_SENSOR_PIN, DHTTYPE);
 LiquidCrystal lcd(LCD_RS_PIN, LCD_EN_PIN, LCD_D4_PIN, LCD_D5_PIN, LCD_D6_PIN, LCD_D7_PIN);
 
@@ -26,29 +28,30 @@ void setup() {
 }
 
 void loop() {
-  sensors_event_t tempEvent;
-  sensors_event_t humidityEvent;
+  // Read sensor non-blocking every 3 seconds
+  if ((millis() - measurementTimestamp) >= 3000UL) {
+    measurementTimestamp = millis();
 
-  dht_sensor.temperature().getEvent(&tempEvent);
-  dht_sensor.humidity().getEvent(&humidityEvent);
+    sensors_event_t tempEvent;
+    sensors_event_t humidityEvent;
 
-  // Validate sensor output before proceeding
-  if (isnan(tempEvent.temperature) || isnan(humidityEvent.relative_humidity)) {
-    Serial.println("WARN: DHT11 read failed");
-    delay(2000);
-    return;
+    dht_sensor.temperature().getEvent(&tempEvent);
+    dht_sensor.humidity().getEvent(&humidityEvent);
+
+    if (isnan(tempEvent.temperature) || isnan(humidityEvent.relative_humidity)) {
+      Serial.println("WARN: DHT11 read failed");
+      return;
+    }
+
+    float currentTemp = tempEvent.temperature;
+    float fahrenheit = (currentTemp * 9.0 / 5.0) + 32.0;
+
+    lcd.setCursor(0, 0);
+    lcd.print("Temperature:");
+    lcd.setCursor(0, 1);
+    lcd.print("                "); 
+    lcd.setCursor(0, 1);
+    lcd.print(fahrenheit);
+    lcd.print(" F");
   }
-
-  float currentTemp = tempEvent.temperature;
-  float fahrenheit = (currentTemp * 9.0 / 5.0) + 32.0;
-
-  lcd.setCursor(0, 0);
-  lcd.print("Temperature:");
-  lcd.setCursor(0, 1);
-  lcd.print("                "); 
-  lcd.setCursor(0, 1);
-  lcd.print(fahrenheit);
-  lcd.print(" F");
-
-  delay(2000);
 }
