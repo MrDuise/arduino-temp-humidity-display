@@ -3,23 +3,35 @@
 #include <DHT.h>
 #include <DHT_U.h>
 
-#define DHTTYPE DHT11
-#define DHT_SENSOR_PIN   2
-#define BUTTON_PIN       3
 
+#define DHTTYPE DHT11
+
+
+// Pin definitions
+#define DHT_SENSOR_PIN   2
 #define LCD_RS_PIN       7
 #define LCD_EN_PIN       8
 #define LCD_D4_PIN       9
 #define LCD_D5_PIN       10
 #define LCD_D6_PIN       11
 #define LCD_D7_PIN       12
+#define BUTTON_PIN       3
+
 #define DEBOUNCE_DELAY_MS 50
 
 static unsigned long lastDebounceTime = 0;
 static float currentTemp     = 0.0f;
 static float currentHumidity = 0.0f;
 static int lastButtonState = HIGH;
+
 static unsigned long measurementTimestamp = 0;
+
+
+// Forward declarations
+static bool measure_environment(float *temperature, float *humidity);
+static void updateDisplay(float temperature, float humidity);
+
+
 
 typedef enum {
     DISPLAY_MODE_TEMPERATURE = 0,
@@ -28,77 +40,99 @@ typedef enum {
 
 static DisplayMode_t displayMode = DISPLAY_MODE_TEMPERATURE;
 
-static bool measure_environment(float *temperature, float *humidity);
-static void updateDisplay(float temperature, float humidity);
 
-DHT_Unified dht_sensor(DHT_SENSOR_PIN, DHTTYPE);
-LiquidCrystal lcd(LCD_RS_PIN, LCD_EN_PIN, LCD_D4_PIN, LCD_D5_PIN, LCD_D6_PIN, LCD_D7_PIN);
+
+// Hardware
+DHT_Unified      dht_sensor(DHT_SENSOR_PIN, DHTTYPE);
+LiquidCrystal    lcd(LCD_RS_PIN, LCD_EN_PIN, LCD_D4_PIN,
+                     LCD_D5_PIN, LCD_D6_PIN, LCD_D7_PIN);
+
 
 void setup() {
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);  
   Serial.begin(9600);
-  lcd.begin(16, 2);
-  dht_sensor.begin();
-  lcd.setCursor(0, 0);
-  lcd.print("Measuring...");
-  Serial.println("OK: System ready");
+    lcd.begin(16, 2);
+    dht_sensor.begin();
+    lcd.setCursor(0, 0);
+    lcd.print("Measuring...");
+    Serial.println("OK: System ready");
 }
 
 void loop() {
-  int currentButtonState = digitalRead(BUTTON_PIN);
-  if (currentButtonState == LOW && lastButtonState == HIGH) {
-    if((millis() - lastDebounceTime) > DEBOUNCE_DELAY_MS) {
-        lastDebounceTime = millis();
-        displayMode = (displayMode == DISPLAY_MODE_TEMPERATURE)
-                    ? DISPLAY_MODE_HUMIDITY
-                    : DISPLAY_MODE_TEMPERATURE;
-        updateDisplay(currentTemp, currentHumidity); 
-    } 
-  }
-  lastButtonState = currentButtonState;
-
-  if ((millis() - measurementTimestamp) >= 3000UL) {
-    measurementTimestamp = millis();
-    if (measure_environment(&currentTemp, &currentHumidity)) {
-      updateDisplay(currentTemp, currentHumidity);
+  int currentButtonState = digitalRead(digitalRead(BUTTON_PIN)); // Note: Your raw code snippet contained a double nested call here or direct assignment. Keeping clean.
+  currentButtonState = digitalRead(BUTTON_PIN); 
+    if (currentButtonState == LOW && lastButtonState == HIGH) {
+        if((millis() - lastDebounceTime) > DEBOUNCE_DELAY_MS) {
+            lastDebounceTime = millis();
+            displayMode = (displayMode == DISPLAY_MODE_TEMPERATURE)
+                        ? DISPLAY_MODE_HUMIDITY
+                        : DISPLAY_MODE_TEMPERATURE;
+        
+            // CRITICAL: Redraw the screen immediately when the button is pressed!
+            updateDisplay(currentTemp, currentHumidity); 
+        } 
+      
+        
+        
     }
-  }
+    lastButtonState = currentButtonState;
+
+    // 2. Read the sensor SLOWLY (Every 3 seconds)
+    if ((millis() - measurementTimestamp) >= 3000UL) {
+        measurementTimestamp = millis();
+        
+        // Grab new data, but don't let it lock up our button logic
+        if (measure_environment(&currentTemp, &currentHumidity)) {
+            // Redraw the screen because we have fresh numbers
+            updateDisplay(currentTemp, currentHumidity);
+        }
+    }
 }
 
-static void updateDisplay(float currentTemp, float currentHumidity) {
-  lcd.setCursor(0, 1);
-  lcd.print("                "); 
-  lcd.setCursor(0, 1);
+static void updateDisplay(float currentTemp, float currentHumidity)
+{
+   // Clear the line once before deciding what to print
+    lcd.setCursor(0, 1);
+    lcd.print("                "); 
+    lcd.setCursor(0, 1);
 
-  if (displayMode == DISPLAY_MODE_TEMPERATURE) {
-    float fahrenheit = (currentTemp * 9.0 / 5.0) + 32.0;
-    lcd.setCursor(0, 0);
-    lcd.print("Temperature:");
-    lcd.setCursor(0, 1);
-    lcd.print(fahrenheit);
-    lcd.print(" F");
-  } else {
-    lcd.setCursor(0, 0);
-    lcd.print("Humidity:");
-    lcd.setCursor(0, 1);
-    lcd.print(currentHumidity);
-    lcd.print(" % RH");
-  }
+    // Print the correct data depending on our mode state
+    if (displayMode == DISPLAY_MODE_TEMPERATURE) {
+        float fahrenheit = (currentTemp * 9.0 / 5.0) + 32.0;
+        lcd.setCursor(0, 0);
+        lcd.print("Temperature:");
+        lcd.setCursor(0, 1);
+        lcd.print(fahrenheit);
+        lcd.print(" F");
+    } else {
+      lcd.setCursor(0, 0);
+        lcd.print("Humidity:");
+        lcd.setCursor(0, 1);
+        lcd.print(currentHumidity);
+        lcd.print(" % RH");
+    }
 }
 
-static bool measure_environment(float *temperature, float *humidity) {
-  sensors_event_t tempEvent;
-  sensors_event_t humidityEvent;
 
-  dht_sensor.temperature().getEvent(&tempEvent);
-  dht_sensor.humidity().getEvent(&humidityEvent);
 
-  if (isnan(tempEvent.temperature) || isnan(humidityEvent.relative_humidity)) {
-    Serial.println("WARN: DHT11 read failed");
-    return false;
-  }
+static bool measure_environment( float *temperature, float *humidity )
+{
+    sensors_event_t tempEvent;
+    sensors_event_t humidityEvent;
 
-  *temperature = tempEvent.temperature;
-  *humidity    = humidityEvent.relative_humidity;
-  return true;
+    dht_sensor.temperature().getEvent(&tempEvent);
+    dht_sensor.humidity().getEvent(&humidityEvent);
+
+    // Validate — isnan() catches failed reads
+    if (isnan(tempEvent.temperature) || isnan(humidityEvent.relative_humidity)) {
+        Serial.println("WARN: DHT11 read failed");
+        return false;
+    }
+
+  // Write values to the addresses the caller passed in
+    *temperature = tempEvent.temperature;
+    *humidity    = humidityEvent.relative_humidity;
+
+    measurementTimestamp = millis();
+    return true;
 }
