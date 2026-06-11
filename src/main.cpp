@@ -17,8 +17,14 @@
 static float currentTemp     = 0.0f;
 static float currentHumidity = 0.0f;
 static int lastButtonState = HIGH;
-static int displayMode = 0; 
 static unsigned long measurementTimestamp = 0;
+
+typedef enum {
+    DISPLAY_MODE_TEMPERATURE = 0,
+    DISPLAY_MODE_HUMIDITY    = 1      
+} DisplayMode_t;
+
+static DisplayMode_t displayMode = DISPLAY_MODE_TEMPERATURE;
 
 static bool measure_environment(float *temperature, float *humidity);
 static void updateDisplay(float temperature, float humidity);
@@ -39,7 +45,9 @@ void setup() {
 void loop() {
   int currentButtonState = digitalRead(BUTTON_PIN);
   if (currentButtonState == LOW && lastButtonState == HIGH) {
-    displayMode = (displayMode == 0) ? 1 : 0;
+    displayMode = (displayMode == DISPLAY_MODE_TEMPERATURE)
+                ? DISPLAY_MODE_HUMIDITY
+                : DISPLAY_MODE_TEMPERATURE;
     updateDisplay(currentTemp, currentHumidity); 
   }
   lastButtonState = currentButtonState;
@@ -57,7 +65,7 @@ static void updateDisplay(float currentTemp, float currentHumidity) {
   lcd.print("                "); 
   lcd.setCursor(0, 1);
 
-  if (displayMode == 0) {
+  if (displayMode == DISPLAY_MODE_TEMPERATURE) {
     float fahrenheit = (currentTemp * 9.0 / 5.0) + 32.0;
     lcd.setCursor(0, 0);
     lcd.print("Temperature:");
