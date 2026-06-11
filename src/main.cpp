@@ -13,7 +13,9 @@
 #define LCD_D5_PIN       10
 #define LCD_D6_PIN       11
 #define LCD_D7_PIN       12
+#define DEBOUNCE_DELAY_MS 50
 
+static unsigned long lastDebounceTime = 0;
 static float currentTemp     = 0.0f;
 static float currentHumidity = 0.0f;
 static int lastButtonState = HIGH;
@@ -45,10 +47,13 @@ void setup() {
 void loop() {
   int currentButtonState = digitalRead(BUTTON_PIN);
   if (currentButtonState == LOW && lastButtonState == HIGH) {
-    displayMode = (displayMode == DISPLAY_MODE_TEMPERATURE)
-                ? DISPLAY_MODE_HUMIDITY
-                : DISPLAY_MODE_TEMPERATURE;
-    updateDisplay(currentTemp, currentHumidity); 
+    if((millis() - lastDebounceTime) > DEBOUNCE_DELAY_MS) {
+        lastDebounceTime = millis();
+        displayMode = (displayMode == DISPLAY_MODE_TEMPERATURE)
+                    ? DISPLAY_MODE_HUMIDITY
+                    : DISPLAY_MODE_TEMPERATURE;
+        updateDisplay(currentTemp, currentHumidity); 
+    } 
   }
   lastButtonState = currentButtonState;
 
